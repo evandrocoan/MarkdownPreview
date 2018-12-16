@@ -5,7 +5,10 @@ MathJax.Hub.Config({
   tex2jax: {
     inlineMath: [ ['$','$'], ["\\(","\\)"] ],
     displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
-    processEscapes: true
+    processEscapes: true,
+    processEnvironments: true,
+    ignoreClass: ".*|",
+    processClass: "arithmatex"
   },
   TeX: {
     extensions: ["AMSmath.js", "AMSsymbols.js"],
@@ -19,7 +22,6 @@ MathJax.Hub.Config({
       fonts: "STIXGeneral,'Arial Unicode MS'"
     }
   },
-  displayAlign: "left",
   showProcessingMessages: false,
   messageStyle: 'none'
 });

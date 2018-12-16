@@ -22,7 +22,6 @@ from .markdown_settings import Settings
 from .markdown_wrapper import StMarkdown as Markdown
 
 _CANNOT_CONVERT = 'cannot convert markdown'
-_EXT_CONFIG = "Packages/Markdown Preview/markdown_preview.yml"
 
 PYGMENTS_LOCAL = {
     'github': 'css/pygments/github.css',
@@ -37,6 +36,12 @@ document.write(
   'script>')
 </script>
 """
+
+
+def log(msg):
+    """Print the MarkdownPreview log message in console."""
+
+    print("MarkdownPreview: %s" % msg)
 
 
 def yaml_load(stream, loader=yaml.Loader, object_pairs_hook=OrderedDict):
@@ -119,7 +124,7 @@ def load_resource(name):
     try:
         return sublime.load_resource('Packages/{}/{}'.format(__package__, name))
     except Exception:
-        print("Error while load_resource('%s')" % name)
+        log("Error while load_resource('%s')" % name)
         traceback.print_exc()
         return ''
 
@@ -155,9 +160,9 @@ def get_references(file_name, encoding="utf-8"):
                 with codecs.open(file_name, "r", encoding=encoding) as f:
                     text = f.read()
             except Exception:
-                print(traceback.format_exc())
+                log(traceback.format_exc())
         else:
-            print("Could not find reference file %s!", file_name)
+            log("Could not find reference file %s!", file_name)
     return text
 
 
@@ -167,7 +172,14 @@ class MarkdownPreviewListener(sublime_plugin.EventListener):
     def on_post_save(self, view):
         """Handle auto-reload on save."""
         settings = sublime.load_settings('MarkdownPreview.sublime-settings')
-        if settings.get('enable_autoreload', True):
+        parser = view.settings().get('parser')
+        external_parser_classes = [GithubCompiler, GitlabCompiler]
+        external_parser_used = parser in external_parser_classes
+        if external_parser_used:
+            auth_provided = settings.get(external_parser_classes[
+                [parser_class.compiler_name for parser_class in external_parser_classes].index(parser)
+            ].authentication_settings_key) is not None
+        if settings.get('enable_autoreload', True) and (not external_parser_used or auth_provided):
             filetypes = settings.get('markdown_filetypes')
             file_name = view.file_name()
             if filetypes and file_name is not None and file_name.endswith(tuple(filetypes)):
@@ -177,7 +189,7 @@ class MarkdownPreviewListener(sublime_plugin.EventListener):
                     # todo : check if browser still opened and reopen it if needed
                     view.run_command('markdown_preview', {
                         'target': 'disk',
-                        'parser': view.settings().get('parser')
+                        'parser': parser
                     })
                     sublime.status_message('Markdown preview file updated')
 
@@ -207,7 +219,9 @@ class MarkdownCheatsheetCommand(sublime_plugin.TextCommand):
 class Compiler(object):
     """Base compiler that does the markdown converting."""
 
-    default_css = "css/markdown.css"
+    compiler_name = ""
+    default_css = []
+    default_js = []
 
     def isurl(self, css_name):
         """Check if URL."""
@@ -218,13 +232,30 @@ class Compiler(object):
 
     def get_default_css(self):
         """Locate the correct CSS with the 'css' setting."""
-        css_list = self.settings.get('css', ['default'])
+        css_files = self.settings.get('css', {})
 
-        if not isinstance(css_list, list):
-            css_list = [css_list]
+        if isinstance(css_files, list):
+            log(
+                "Warning: The list format for CSS is deprecated, please use the dictionary format.\n"
+                "List support will be removed in the future."
+            )
+
+        if isinstance(css_files, str):
+            log(
+                "Warning: The string format for CSS is deprecated, please use the dictionary format.\n"
+                "String support will be removed in the future."
+            )
+            css_files = [css_files]
+
+        if isinstance(css_files, dict):
+            css_files = css_files.get(self.compiler_name, ["default"])
+
+        if 'default' in css_files:
+            i = css_files.index('default')
+            css_files[i:i + 1] = self.default_css
 
         css_text = []
-        for css_name in css_list:
+        for css_name in css_files:
             if css_name.startswith('res://'):
                 internal_file = os.path.join(sublime.packages_path(), os.path.normpath(css_name[6:]))
                 if os.path.exists(internal_file):
@@ -237,9 +268,6 @@ class Compiler(object):
             elif os.path.isfile(os.path.expanduser(css_name)):
                 # use custom CSS file
                 css_text.append("<style>%s</style>" % load_utf8(os.path.expanduser(css_name)))
-            elif css_name == 'default':
-                # use parser CSS file
-                css_text.append("<style>%s</style>" % load_resource(self.default_css))
 
         return '\n'.join(css_text)
 
@@ -264,7 +292,28 @@ class Compiler(object):
 
     def get_javascript(self):
         """Return JavaScript."""
-        js_files = self.settings.get('js')
+        js_files = self.settings.get('js', {})
+
+        if isinstance(js_files, list):
+            log(
+                "Warning: The list format for JS is deprecated, please use the dictionary format.\n"
+                "List support will be removed in the future."
+            )
+
+        if isinstance(js_files, str):
+            log(
+                "Warning: The string format for JS is deprecated, please use the dictionary format.\n"
+                "String support will be removed in the future."
+            )
+            js_files = [js_files]
+
+        if isinstance(js_files, dict):
+            js_files = js_files.get(self.compiler_name, ["default"])
+
+        if 'default' in js_files:
+            i = js_files.index('default')
+            js_files[i:i + 1] = self.default_js
+
         scripts = ''
 
         if js_files is not None:
@@ -422,7 +471,7 @@ class Compiler(object):
         return text
 
     def convert_markdown(self, markdown_text):
-        """Convert input markdown to HTML, with github or builtin parser."""
+        """Convert input markdown to HTML, with github, gitlab or builtin parser."""
         markdown_html = self.parser_specific_convert(markdown_text)
 
         image_convert = self.settings.get("image_path_conversion", "absolute")
@@ -518,6 +567,7 @@ class Compiler(object):
         else:
             html = '<!DOCTYPE html>'
             html += '<html><head><meta charset="utf-8">'
+            html += '<meta name="viewport" content="width=device-width, initial-scale=1">'
             html += self.get_meta()
             html += self.get_stylesheet()
             html += self.get_javascript()
@@ -533,13 +583,17 @@ class Compiler(object):
         return html, body
 
 
-class GithubCompiler(Compiler):
-    """GitHub compiler."""
+class OnlineCompiler(Compiler):
+    """Online compiler."""
 
-    default_css = "css/github.css"
+    content_type = "application/json"
+    url = ""
+    authentication_settings_key = ""
+    authentication_api_key = "Authorization"
+    authentication_api_type = "token"
 
     def curl_convert(self, data):
-        """Use curl to send Markdown content through GitHub API."""
+        """Use curl to send Markdown content through API."""
         try:
             import subprocess
 
@@ -550,31 +604,152 @@ class GithubCompiler(Compiler):
             curl_args = [
                 'curl',
                 '-H',
-                'Content-Type: application/json',
+                'Content-Type: %s' % self.content_type,
                 '-d',
                 shell_safe_json,
-                'https://api.github.com/markdown'
+                self.url
             ]
 
-            github_oauth_token = self.settings.get('github_oauth_token')
-            if github_oauth_token:
+            # Join together token type and value
+            # If no type is provided, we will have just the value
+            token = []
+            if self.authentication_api_type:
+                token.append(self.authentication_api_type)
+            token_value = self.settings.get(self.authentication_settings_key)
+            token.append(token_value)
+
+            if token_value:
                 curl_args[1:1] = [
-                    '-u',
-                    github_oauth_token
+                    '-H',
+                    '%s: %s' % (self.authentication_api_key, ' '.join(token))
                 ]
 
-            markdown_html = subprocess.Popen(curl_args, stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
+            markdown_html = self.unpack_data(subprocess.Popen(curl_args, stdout=subprocess.PIPE).communicate()[0])
             return markdown_html
         except subprocess.CalledProcessError:
             sublime.error_message(
                 textwrap.dedent(
                     """\
-                    Cannot use github API to convert markdown. SSL is not included in your Python installation. \
+                    Cannot use %s API to convert markdown. SSL is not included in your Python installation. \
                     And using curl didn't work either
-                    """
+                    """ % self.compiler_name
                 )
             )
         return None
+
+    def get_server_exception_message(self, body):
+        """Extract server exception message from body of API response."""
+        return body['message']
+
+    def get_response_from_exception(self, e):
+        """Convert Online Compiler Response."""
+        body = json.loads(e.read().decode('utf-8'))
+        return '%s\'s original response: (HTTP Status Code %s) "%s"' % (
+            self.compiler_name, e.code, self.get_server_exception_message(body))
+
+    def pack_data(self, markdown_text, mode):
+        """Prepare data to send to API."""
+        return {
+            "text": markdown_text,
+            "mode": mode
+        }
+
+    def unpack_data(self, raw_data):
+        """Get html from API response."""
+        return raw_data.decode('utf-8')
+
+    def parser_specific_convert(self, markdown_text):
+        """Convert input markdown to HTML with online compiler parser."""
+        markdown_html = _CANNOT_CONVERT
+        token = self.settings.get(self.authentication_settings_key)
+
+        # use the online compiler API
+        sublime.status_message('converting markdown with %s API...' % self.compiler_name)
+        mode = self.settings.get('%s_mode' % self.compiler_name, 'gfm')
+        data = self.pack_data(markdown_text, mode)
+        data = json.dumps(data).encode('utf-8')
+
+        try:
+            headers = {
+                'Content-Type': self.content_type
+            }
+            if token:
+                headers[self.authentication_api_key] = "%s %s" % (self.authentication_api_type, token)
+            request = request_url(self.url, data, headers)
+            markdown_html = self.unpack_data(urlopen(request).read())
+        except HTTPError as e:
+            if e.code == 401:
+                sublime.error_message(
+                    ("%s API authentication failed. Please check your %s's token.\n\n" % (
+                        self.compiler_name, self.compiler_name
+                    )) + self.get_response_from_exception(e)
+                )
+            elif e.code == 403:  # Forbidden
+                sublime.error_message(
+                    textwrap.dedent(
+                        """\
+                        It seems like you have exceeded %s's API rate limit.
+
+                        To continue using %s's markdown format with this package, log in to \
+                        %s, then generate a new token, \
+                        copy the token's value, and paste it in this package's user settings under the key \
+                        '%s'. Example:
+
+                        {
+                            "%s": "xxxx...."
+                        }
+
+                        """ % tuple(self.authentication_settings_key for i in range(5))
+                    ) + self.get_response_from_exception(e)
+                )
+            else:
+                sublime.error_message(
+                    "%s API responded in an unfriendly way!\n\n" % self.compiler_name +
+                    self.get_response_from_exception(e)
+                )
+        except URLError:
+            # Maybe this is a Linux-install of ST which doesn't bundle with SSL support
+            # So let's try wrapping curl instead
+            markdown_html = self.curl_convert(data)
+        except Exception:
+            e = sys.exc_info()[1]
+            log(e)
+            traceback.print_exc()
+            sublime.error_message(
+                "Cannot use %s's API to convert Markdown. Please check your settings.\n\n" % self.compiler_name +
+                self.get_response_from_exception(e)
+            )
+        else:
+            sublime.status_message('converted markdown with github API successfully')
+
+        return markdown_html
+
+
+class GithubCompiler(OnlineCompiler):
+    """GitHub compiler."""
+
+    default_css = ["res://MarkdownPreview/css/github.css"]
+    compiler_name = "github"
+    content_type = "application/json"
+    url = "https://api.github.com/markdown"
+    authentication_settings_key = "github_oauth_token"
+    authentication_api_key = "Authorization"
+    authentication_api_type = "token"
+
+    def get_server_exception_message(self, body):
+        """Extract server exception message from body of API response."""
+        return body['message']
+
+    def pack_data(self, markdown_text, mode):
+        """Prepare data to send to API."""
+        return {
+            "text": markdown_text,
+            "mode": mode
+        }
+
+    def unpack_data(self, raw_data):
+        """Get html from API response."""
+        return raw_data.decode('utf-8')
 
     def parser_specific_postprocess(self, html):
         """Run GitHub specific postprocesses."""
@@ -589,116 +764,102 @@ class GithubCompiler(Compiler):
         re_header = re.compile(r'(?P<open><h([1-6])>)(?P<text>.*?)(?P<close></h\2>)', re.DOTALL)
 
         def inject_id(m):
-            id = uslugify(m.group('text'), '-')
-            if id == '':
+            header_id = uslugify(m.group('text'), '-')
+            if header_id == '':
                 return m.group(0)
             # Append a dash and number for uniqueness if needed
-            value = unique.get(id, None)
+            value = unique.get(header_id, None)
             if value is None:
-                unique[id] = 1
+                unique[header_id] = 1
             else:
-                unique[id] += 1
-                id += "-%d" % value
-            return m.group('open')[:-1] + (' id="%s">' % id) + m.group('text') + m.group('close')
+                unique[header_id] += 1
+                header_id += "-%d" % value
+            return m.group('open')[:-1] + (' id="%s">' % header_id) + m.group('text') + m.group('close')
 
         return re_header.sub(inject_id, html)
 
-    def get_github_response_from_exception(self, e):
-        """Convert GitHub Response."""
-        body = json.loads(e.read().decode('utf-8'))
-        return 'GitHub\'s original response: (HTTP Status Code %s) "%s"' % (e.code, body['message'])
 
-    def parser_specific_convert(self, markdown_text):
-        """Convert input markdown to HTML with github parser."""
-        markdown_html = _CANNOT_CONVERT
-        github_oauth_token = self.settings.get('github_oauth_token')
+class GitlabCompiler(OnlineCompiler):
+    """GitLab compiler."""
 
-        # use the github API
-        sublime.status_message('converting markdown with github API...')
-        github_mode = self.settings.get('github_mode', 'gfm')
-        data = {
+    default_css = [
+        "res://MarkdownPreview/css/gitlab.css",
+        "https://cdn.jsdelivr.net/npm/katex@0.10.0-alpha/dist/katex.min.css"
+    ]
+    default_js = [
+        "https://cdn.jsdelivr.net/npm/katex@0.10.0-alpha/dist/katex.min.js",
+        "https://unpkg.com/mermaid@8.0.0-rc.8/dist/mermaid.min.js",
+        # Calling `mermaid.initialize` at the first lines of gitlab_config.js should come immediately after mermaid.js.
+        "res://MarkdownPreview/js/gitlab_config.js"
+    ]
+    compiler_name = "gitlab"
+    content_type = "application/json"
+    url = "https://gitlab.com/api/v4/markdown"
+    authentication_settings_key = "gitlab_personal_token"
+    authentication_api_key = "Private-Token"
+    authentication_api_type = ""
+
+    def get_server_exception_message(self, body):
+        """Extract server exception message from body of API response."""
+        return body.get('message', '') + body.get('error', '')
+
+    def pack_data(self, markdown_text, mode):
+        """Prepare data to send to API."""
+        return {
             "text": markdown_text,
-            "mode": github_mode
+            "gfm": mode == 'gfm'
         }
-        data = json.dumps(data).encode('utf-8')
 
-        try:
-            headers = {
-                'Content-Type': 'application/json'
-            }
-            if github_oauth_token:
-                headers['Authorization'] = "token %s" % github_oauth_token
-            url = "https://api.github.com/markdown"
-            sublime.status_message(url)
-            request = request_url(url, data, headers)
-            markdown_html = urlopen(request).read().decode('utf-8')
-        except HTTPError as e:
-            if e.code == 401:
-                sublime.error_message(
-                    "GitHub API authentication failed. Please check your OAuth token.\n\n" +
-                    self.get_github_response_from_exception(e)
-                )
-            elif e.code == 403:  # Forbidden
-                sublime.error_message(
-                    textwrap.dedent(
-                        """\
-                        It seems like you have exceeded GitHub's API rate limit.
+    def unpack_data(self, raw_data):
+        """Get html from API response."""
+        return json.loads(raw_data.decode('utf-8'))['html']
 
-                        To continue using GitHub's markdown format with this package, log in to \
-                        GitHub, then go to Settings > Personal access tokens > Generate new token, \
-                        copy the token's value, and paste it in this package's user settings under the key \
-                        'github_oauth_token'. Example:
+    def parser_specific_postprocess(self, html):
+        """Run GitLab specific postprocesses."""
+        if self.settings.get('%s_mode' % self.compiler_name, 'gfm') == 'gfm':
+            html = self.fix_ids(html)
+        if not self.settings.get('html_simple', False):
+            html += '<script>const HIGHLIGHT_THEME = "%s";</script>' % (
+                self.settings.get('gitlab_highlight_theme', 'white'))
+        html = self.fix_images_src(html)
+        return html
 
-                        {
-                            "github_oauth_token": "xxxx...."
-                        }
+    def fix_ids(self, html):
+        """Fix id of head tags to be compatible with href of links."""
+        re_header = re.compile(r'(?P<open><a)(?P<text1>.*?)(?P<id>id="user-content-)(?P<text2>.*?)(?P<close>>)',
+                               re.DOTALL)
+        return re_header.sub(
+            lambda m: m.group('open') + m.group('text1') + 'id="' + m.group('text2') + m.group('close'), html)
 
-                        """
-                    ) + self.get_github_response_from_exception(e)
-                )
-            else:
-                sublime.error_message(
-                    "GitHub API responded in an unfriendly way!\n\n" +
-                    self.get_github_response_from_exception(e)
-                )
-        except URLError:
-            # Maybe this is a Linux-install of ST which doesn't bundle with SSL support
-            # So let's try wrapping curl instead
-            markdown_html = self.curl_convert(data)
-        except Exception:
-            e = sys.exc_info()[1]
-            print(e)
-            traceback.print_exc()
-            sublime.error_message(
-                "Cannot use GitHub's API to convert Markdown. Please check your settings.\n\n" +
-                self.get_github_response_from_exception(e)
-            )
-        else:
-            sublime.status_message('converted markdown with github API successfully')
-
-        return markdown_html
+    def fix_images_src(self, html):
+        """Fix src of images tag which is replaced with a placeholder for lazy loading."""
+        re_image = re.compile(r'(?P<open><img)(?P<text1>[^>]*?)(?P<src>src="[^>]*")(?P<text2>[^>]*?)' +
+                              r'(?P<data_src>data-src="[^>]*")(?P<text3>[^>]*?)(?P<close>>)', re.DOTALL)
+        return re_image.sub(
+            lambda m: m.group('open') + m.group('text1') + m.group('data_src')[5:] + m.group('text2') +
+            m.group('text3') + m.group('close'), html)
 
 
 class ExternalMarkdownCompiler(Compiler):
     """Compiler for other, external Markdown parsers."""
 
-    default_css = "css/markdown.css"
+    default_css = ["res://MarkdownPreview/css/markdown.css"]
 
     def __init__(self, parser):
         """Initialize."""
 
-        self.parser = parser
+        self.compiler_name = parser
         super(ExternalMarkdownCompiler, self).__init__()
 
     def parser_specific_convert(self, markdown_text):
         """Convert Markdown with external parser."""
         import subprocess
         settings = sublime.load_settings("MarkdownPreview.sublime-settings")
-        binary = settings.get('markdown_binary_map', {})[self.parser]
+        binary = settings.get('markdown_binary_map', {})[self.compiler_name]
 
         if len(binary) and os.path.exists(binary[0]):
             cmd = binary
-            sublime.status_message('converting markdown with %s...' % self.parser)
+            sublime.status_message('converting markdown with %s...' % self.compiler_name)
             if sublime.platform() == "windows":
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
@@ -717,7 +878,7 @@ class ExternalMarkdownCompiler(Compiler):
             if p.returncode:
                 # Log info to console
                 sublime.error_message("Could not convert file! See console for more info.")
-                print(markdown_html)
+                log(markdown_html)
                 markdown_html = _CANNOT_CONVERT
         else:
             sublime.error_message("Cannot find % binary!" % self.binary)
@@ -728,7 +889,8 @@ class ExternalMarkdownCompiler(Compiler):
 class MarkdownCompiler(Compiler):
     """Python Markdown compiler."""
 
-    default_css = "css/markdown.css"
+    compiler_name = "markdown"
+    default_css = ["res://MarkdownPreview/css/markdown.css"]
 
     def set_highlight(self, pygments_style, css_class):
         """Set the Pygments css."""
@@ -740,6 +902,7 @@ class MarkdownCompiler(Compiler):
                         ''.join(['.' + x for x in css_class.split(' ') if x])
                     )
                 except Exception:
+                    log("Error")
                     traceback.print_exc()
                     pygments_style = 'github'
             if style is None:
@@ -836,7 +999,8 @@ class MarkdownPreviewSelectCommand(sublime_plugin.TextCommand):
         md_map = settings.get('markdown_binary_map', {})
         parsers = [
             "markdown",
-            "github"
+            GithubCompiler.compiler_name,
+            GitlabCompiler.compiler_name
         ]
 
         # Add external markdown binaries.
@@ -846,7 +1010,8 @@ class MarkdownPreviewSelectCommand(sublime_plugin.TextCommand):
         self.target = target
 
         enabled_parsers = set()
-        for p in settings.get("enabled_parsers", ["markdown", "github"]):
+        for p in settings.get("enabled_parsers", ["markdown",
+                              GithubCompiler.compiler_name, GitlabCompiler.compiler_name]):
             if p in parsers:
                 enabled_parsers.add(p)
 
@@ -895,11 +1060,14 @@ class MarkdownPreviewCommand(sublime_plugin.TextCommand):
         self.parser = parser
         self.target = target
 
-        if parser == "github":
+        if parser == GithubCompiler.compiler_name:
             compiler = GithubCompiler()
+        elif parser == GitlabCompiler.compiler_name:
+            compiler = GitlabCompiler()
         elif parser == 'markdown':
             compiler = MarkdownCompiler()
-        elif parser in self.settings.get("enabled_parsers", ("markdown", "github")):
+        elif parser in self.settings.get("enabled_parsers",
+                                         ("markdown", GithubCompiler.compiler_name, GitlabCompiler.compiler_name)):
             compiler = ExternalMarkdownCompiler(parser)
         else:
             # Fallback to Python Markdown
@@ -925,8 +1093,13 @@ class MarkdownPreviewCommand(sublime_plugin.TextCommand):
     def to_disk(self, html, open_in_browser):
         """Save to disk and open in browser if desired."""
         # do not use LiveReload unless autoreload is enabled
-        github_auth_provided = self.settings.get('github_oauth_token') is not None
-        if self.settings.get('enable_autoreload', True) and (self.parser != 'github' or github_auth_provided):
+        external_parser_classes = [GithubCompiler, GitlabCompiler]
+        external_parser_used = self.parser in external_parser_classes
+        if external_parser_used:
+            auth_provided = self.settings.get(external_parser_classes[
+                [parser_class.compiler_name for parser_class in external_parser_classes].index(self.parser)
+            ].authentication_settings_key) is not None
+        if self.settings.get('enable_autoreload', True) and (not external_parser_used or auth_provided):
             # check if LiveReload ST2 extension installed and add its script to the resulting HTML
             if 'LiveReload' in os.listdir(sublime.packages_path()):
                 port = sublime.load_settings('LiveReload.sublime-settings').get('port', 35729)
@@ -1029,8 +1202,8 @@ class MarkdownBuildCommand(sublime_plugin.WindowCommand):
         settings = sublime.load_settings('MarkdownPreview.sublime-settings')
         parser = settings.get('parser', 'markdown')
         if parser == 'default':
-            print(
-                'Markdown Preview: The use of "default" as a parser is now deprecated,'
+            log(
+                'Warning: The use of "default" as a parser is now deprecated,'
                 ' please specify a valid parser name.'
             )
             parser = 'markdown'
@@ -1051,18 +1224,21 @@ class MarkdownBuildCommand(sublime_plugin.WindowCommand):
 
         self.puts("Compiling %s..." % mdfile)
 
-        if parser == "github":
+        if parser == GithubCompiler.compiler_name:
             compiler = GithubCompiler()
+        elif parser == GitlabCompiler.compiler_name:
+            compiler = GitlabCompiler()
         elif parser == 'markdown':
             compiler = MarkdownCompiler()
-        elif parser in settings.get("enabled_parsers", ("markdown", "github")):
+        elif parser in settings.get("enabled_parsers", ("markdown",
+                                    GithubCompiler.compiler_name, GitlabCompiler.compiler_name)):
             compiler = ExternalMarkdownCompiler(parser)
         else:
             compiler = MarkdownCompiler()
 
         html, body = compiler.run(view, True, preview=False)
 
-        if 'build' in self.settings.get('include_head', ['build', 'browser', 'sublime', 'clipboard', 'save']):
+        if 'build' in settings.get('include_head', ['build', 'browser', 'sublime', 'clipboard', 'save']):
             content = html
         else:
             content = body

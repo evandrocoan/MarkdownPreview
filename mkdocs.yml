@@ -1,6 +1,6 @@
 site_name: Markdown Preview Documentation
-site_url: https://revolunet.github.io/sublimetext-markdown-preview
-repo_url: https://github.com/revolunet/sublimetext-markdown-preview
+site_url: https://facelessuser.github.io/MarkdownPreview
+repo_url: https://github.com/facelessuser/MarkdownPreview
 edit_uri: tree/master/docs/src/markdown
 site_description: Markdown preview and build plugin for Sublime Text 3
 copyright: |
@@ -19,7 +19,7 @@ theme:
     text: Roboto
     code: Roboto Mono
 
-pages:
+nav:
   - Markdown Preview: index.md
   - Installation: install.md
   - Usage: usage.md
@@ -58,8 +58,8 @@ markdown_extensions:
       repo_url_shortener: true
       repo_url_shorthand: true
       social_url_shorthand: true
-      user: revolunet
-      repo: sublimetext-markdown-preview
+      user: facelessuser
+      repo: MarkdownPreview
   - pymdownx.tilde:
   - pymdownx.caret:
   - pymdownx.smartsymbols:
@@ -82,7 +82,7 @@ markdown_extensions:
 extra:
   social:
     - type: github
-      link: https://github.com/revolunet
+      link: https://github.com/facelessuser
 extra_css:
   - extra-d04c85ed4a.css
 extra_javascript:

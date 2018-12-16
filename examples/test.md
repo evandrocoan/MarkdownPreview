@@ -21,9 +21,9 @@
           - https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js
           - https://cdnjs.cloudflare.com/ajax/libs/js-sequence-diagrams/1.0.6/sequence-diagram-min.js
           - https://cdnjs.cloudflare.com/ajax/libs/flowchart/1.6.5/flowchart.min.js
-          - res://Markdown Preview/js/uml.js
+          - res://MarkdownPreview/js/uml.js
           - https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js
-          - res://Markdown Preview/js/math_config.js
+          - res://MarkdownPreview/js/math_config.js
         markdown_extensions:
           - markdown.extensions.footnotes
           - markdown.extensions.attr_list
@@ -63,7 +63,14 @@
                 image_path: https://assets-cdn.github.com/images/icons/emoji/unicode/
                 non_standard_image_path: https://assets-cdn.github.com/images/icons/emoji/
           - pymdownx.tasklist
-          - pymdownx.superfences
+          - pymdownx.superfences:
+              custom_fences:
+                - name: flow
+                  class: uml-flowchart
+                  format: !!python/name:pymdownx.superfences.fence_code_format
+                - name: sequence
+                  class: uml-sequence-diagram
+                  format: !!python/name:pymdownx.superfences.fence_code_format
 ---
 test: This tests the meta extension
 title: This title will be overridden by YAML
@@ -881,6 +888,21 @@ D-->>A: Dashed open arrow
 ```
 
 ## Math
+
+```
+$p(x|y) = \frac{p(y|x)p(x)}{p(y)}$, \(p(x|y) = \frac{p(y|x)p(x)}{p(y)}\).
+
+$$
+E(\mathbf{v}, \mathbf{h}) = -\sum_{i,j}w_{ij}v_i h_j - \sum_i b_i v_i - \sum_j c_j h_j
+$$
+
+\[3 < 4\]
+
+\begin{align}
+    p(v_i=1|\mathbf{h}) & = \sigma\left(\sum_j w_{ij}h_j + b_i\right) \\
+    p(h_j=1|\mathbf{v}) & = \sigma\left(\sum_i w_{ij}v_i + c_j\right)
+\end{align}
+```
 
 $p(x|y) = \frac{p(y|x)p(x)}{p(y)}$, \(p(x|y) = \frac{p(y|x)p(x)}{p(y)}\).
 

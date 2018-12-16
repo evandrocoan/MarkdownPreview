@@ -73,7 +73,7 @@ Also, any indented block is considered a code block.  If `enable_highlight` is `
 
 ## Math
 
-When `enable_mathjax` is `true`, inline math can be included \\(\frac{\pi}{2}\\) $\pi$
+Math can be displayed in the browser using MathJax or Katex. The feature can be enabled by correctly configuring the `"js"`, `"css"`, and `"markdown_extensions"` configuration fields. This allows for inline math to be included \\(\frac{\pi}{2}\\) $\pi$.
 
 Alternatively, math can be written on its own line:
 
