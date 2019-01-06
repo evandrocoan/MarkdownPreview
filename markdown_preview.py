@@ -1,5 +1,5 @@
 # -*- encoding: UTF-8 -*-
-"""Mardown Preview main."""
+"""Markdown Preview main."""
 import sublime
 import sublime_plugin
 import os
@@ -32,7 +32,7 @@ RELOAD_JS = """<script async>
 document.write(
   '<script src="http://' +
   (location.host || 'localhost').split(':')[0] +
-  ':%d/livereload.js?snipver=1"></' +
+  ':%d/livereload.js?snipver=1" async></' +
   'script>')
 </script>
 """
@@ -48,20 +48,20 @@ def yaml_load(stream, loader=yaml.Loader, object_pairs_hook=OrderedDict):
     """
     Custom yaml loader.
 
-    Make all YAML dictionaries load as ordered Dicts.
+    Make all YAML dictionaries load as ordered dictionary.
     http://stackoverflow.com/a/21912744/3609487
-    Load all strings as unicode.
+    Load all strings as Unicode.
     http://stackoverflow.com/a/2967461/3609487
     """
 
     def construct_mapping(loader, node):
-        """Convert to ordered dict."""
+        """Convert to ordered dictionary."""
 
         loader.flatten_mapping(node)
         return object_pairs_hook(loader.construct_pairs(node))
 
     def construct_yaml_str(self, node):
-        """Override the default string handling function to always return unicode objects."""
+        """Override the default string handling function to always return Unicode objects."""
 
         return self.construct_scalar(node)
 
@@ -100,7 +100,7 @@ def get_temp_preview_path(view):
     else:
         tmp_dir = tempfile.gettempdir()
 
-    if not os.path.isdir(tmp_dir):  # create dir if not exsits
+    if not os.path.isdir(tmp_dir):  # create directory if not exists
         os.makedirs(tmp_dir)
 
     tmp_fullpath = os.path.join(tmp_dir, tmp_filename)
@@ -167,7 +167,7 @@ def get_references(file_name, encoding="utf-8"):
 
 
 class MarkdownPreviewListener(sublime_plugin.EventListener):
-    """Auto update the output html if markdown file has already been converted once."""
+    """Auto update the output HTML if markdown file has already been converted once."""
 
     def on_post_save(self, view):
         """Handle auto-reload on save."""
@@ -185,8 +185,8 @@ class MarkdownPreviewListener(sublime_plugin.EventListener):
             if filetypes and file_name is not None and file_name.endswith(tuple(filetypes)):
                 temp_file = get_temp_preview_path(view)
                 if os.path.isfile(temp_file):
-                    # reexec markdown conversion
-                    # todo : check if browser still opened and reopen it if needed
+                    # re-execute markdown conversion
+                    # TODO: check if browser still opened and reopen it if needed
                     view.run_command('markdown_preview', {
                         'target': 'disk',
                         'parser': parser
@@ -231,7 +231,7 @@ class Compiler(object):
         return False
 
     def get_default_css(self):
-        """Locate the correct CSS with the 'css' setting."""
+        """Locate the correct CSS with the `css` setting."""
         css_files = self.settings.get('css', {})
 
         if isinstance(css_files, list):
@@ -272,7 +272,7 @@ class Compiler(object):
         return '\n'.join(css_text)
 
     def get_override_css(self):
-        """Handles allow_css_overrides setting."""
+        """Handles `allow_css_overrides` setting."""
 
         if self.settings.get('allow_css_overrides'):
             filename = self.view.file_name()
@@ -359,7 +359,7 @@ class Compiler(object):
         for ref in references:
             contents += get_references(ref)
 
-        # Striip CriticMarkup
+        # Strip CriticMarkup
         if self.settings.get("strip_critic_marks", "accept") in ("accept", "reject"):
             contents = self.preprocessor_criticmarkup(
                 contents, self.settings.get("strip_critic_marks", "accept") == "accept"
@@ -458,7 +458,7 @@ class Compiler(object):
         return striphtml.run(source)
 
     def preprocessor_criticmarkup(self, source, accept):
-        """Stip out multi-markdown critic marks.  Accept changes by default."""
+        """Strip out multi-markdown critic marks.  Accept changes by default."""
         from pymdownx.critic import CriticViewPreprocessor, CriticStash, CRITIC_KEY
 
         text = ''
@@ -471,7 +471,7 @@ class Compiler(object):
         return text
 
     def convert_markdown(self, markdown_text):
-        """Convert input markdown to HTML, with github, gitlab or builtin parser."""
+        """Convert input markdown to HTML, with GitHub, GitLab or builtin parser."""
         markdown_html = self.parser_specific_convert(markdown_text)
 
         image_convert = self.settings.get("image_path_conversion", "absolute")
@@ -550,7 +550,7 @@ class Compiler(object):
         if html_template:
             html_template = os.path.abspath(os.path.expanduser(html_template))
 
-        # use customized html template if given
+        # use customized HTML template if given
         if self.settings.get('html_simple', False):
             html = body
         elif html_template and os.path.exists(html_template):
@@ -599,7 +599,7 @@ class OnlineCompiler(Compiler):
 
             # It looks like the text does NOT need to be escaped and
             # surrounded with double quotes.
-            # Tested in ubuntu 13.10, python 2.7.5+
+            # Tested in Ubuntu 13.10, python 2.7.5+
             shell_safe_json = data.decode('utf-8')
             curl_args = [
                 'curl',
@@ -655,7 +655,7 @@ class OnlineCompiler(Compiler):
         }
 
     def unpack_data(self, raw_data):
-        """Get html from API response."""
+        """Get HTML from API response."""
         return raw_data.decode('utf-8')
 
     def parser_specific_convert(self, markdown_text):
@@ -748,7 +748,7 @@ class GithubCompiler(OnlineCompiler):
         }
 
     def unpack_data(self, raw_data):
-        """Get html from API response."""
+        """Get HTML from API response."""
         return raw_data.decode('utf-8')
 
     def parser_specific_postprocess(self, html):
@@ -789,7 +789,8 @@ class GitlabCompiler(OnlineCompiler):
     default_js = [
         "https://cdn.jsdelivr.net/npm/katex@0.10.0-alpha/dist/katex.min.js",
         "https://unpkg.com/mermaid@8.0.0-rc.8/dist/mermaid.min.js",
-        # Calling `mermaid.initialize` at the first lines of gitlab_config.js should come immediately after mermaid.js.
+        # Calling `mermaid.initialize` at the first lines of `gitlab_config.js`
+        # should come immediately after `mermaid.js.`
         "res://MarkdownPreview/js/gitlab_config.js"
     ]
     compiler_name = "gitlab"
@@ -811,7 +812,7 @@ class GitlabCompiler(OnlineCompiler):
         }
 
     def unpack_data(self, raw_data):
-        """Get html from API response."""
+        """Get HTML from API response."""
         return json.loads(raw_data.decode('utf-8'))['html']
 
     def parser_specific_postprocess(self, html):
@@ -825,14 +826,14 @@ class GitlabCompiler(OnlineCompiler):
         return html
 
     def fix_ids(self, html):
-        """Fix id of head tags to be compatible with href of links."""
+        """Fix id of head tags to be compatible with `href` of links."""
         re_header = re.compile(r'(?P<open><a)(?P<text1>.*?)(?P<id>id="user-content-)(?P<text2>.*?)(?P<close>>)',
                                re.DOTALL)
         return re_header.sub(
             lambda m: m.group('open') + m.group('text1') + 'id="' + m.group('text2') + m.group('close'), html)
 
     def fix_images_src(self, html):
-        """Fix src of images tag which is replaced with a placeholder for lazy loading."""
+        """Fix `src` of images tag which is replaced with a placeholder for lazy loading."""
         re_image = re.compile(r'(?P<open><img)(?P<text1>[^>]*?)(?P<src>src="[^>]*")(?P<text2>[^>]*?)' +
                               r'(?P<data_src>data-src="[^>]*")(?P<text3>[^>]*?)(?P<close>>)', re.DOTALL)
         return re_image.sub(
@@ -893,7 +894,7 @@ class MarkdownCompiler(Compiler):
     default_css = ["res://MarkdownPreview/css/markdown.css"]
 
     def set_highlight(self, pygments_style, css_class):
-        """Set the Pygments css."""
+        """Set the Pygments CSS."""
         if pygments_style:
             style = None
             if pygments_style not in PYGMENTS_LOCAL:
@@ -914,12 +915,12 @@ class MarkdownCompiler(Compiler):
         return pygments_style
 
     def get_highlight(self):
-        """Return the Pygments css if enabled."""
+        """Return the Pygments CSS if enabled."""
         return self.pygments_style if self.pygments_style else ''
 
     def preprocessor_critic(self, source):
         """
-        Stip out multi-markdown critic marks.
+        Strip out multi-markdown critic marks.
 
         Accept changes by default.
         """
@@ -936,7 +937,7 @@ class MarkdownCompiler(Compiler):
 
     def process_extensions(self, extensions):
         """Process extensions and related settings."""
-        # See if we need to inject CSS for pygments.
+        # See if we need to inject CSS for Pygments.
         self.pygments_style = None
         style = self.settings.get('pygments_style', 'github')
         if self.settings.get('pygments_inject_css', True):
@@ -1092,7 +1093,7 @@ class MarkdownPreviewCommand(sublime_plugin.TextCommand):
 
     def to_disk(self, html, open_in_browser):
         """Save to disk and open in browser if desired."""
-        # do not use LiveReload unless autoreload is enabled
+        # do not use `LiveReload` unless `autoreload` is enabled
         external_parser_classes = [GithubCompiler, GitlabCompiler]
         external_parser_used = self.parser in external_parser_classes
         if external_parser_used:
@@ -1104,7 +1105,7 @@ class MarkdownPreviewCommand(sublime_plugin.TextCommand):
             if 'LiveReload' in os.listdir(sublime.packages_path()):
                 port = sublime.load_settings('LiveReload.sublime-settings').get('port', 35729)
                 html += RELOAD_JS % port
-        # update output html file
+        # update output HTML file
         tmp_fullpath = get_temp_preview_path(self.view)
         save_utf8(tmp_fullpath, html)
         # now opens in browser if needed
@@ -1147,7 +1148,7 @@ class MarkdownPreviewCommand(sublime_plugin.TextCommand):
         if browser == 'default':
             if sys.platform == 'darwin':
                 # To open HTML files, Mac OS the open command uses the file
-                # associated with .html. For many developers this is Sublime,
+                # associated with `.html`. For many developers this is Sublime,
                 # not the default browser. Getting the right value is
                 # embarrassingly difficult.
                 import shlex

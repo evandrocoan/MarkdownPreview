@@ -4,7 +4,7 @@ repo_url: https://github.com/facelessuser/MarkdownPreview
 edit_uri: tree/master/docs/src/markdown
 site_description: Markdown preview and build plugin for Sublime Text 3
 copyright: |
-  <br><span class="md-footer-custom-text">emoji provided free by </span><a href="http://www.emojione.com">EmojiOne</a>
+  <br><span class="md-footer-custom-text">emoji provided free by <a href="http://www.emojione.com">EmojiOne</a></span>
 
 docs_dir: docs/src/markdown
 theme:
@@ -84,6 +84,6 @@ extra:
     - type: github
       link: https://github.com/facelessuser
 extra_css:
-  - extra-d04c85ed4a.css
+  - extra-83f68d2c59.css
 extra_javascript:
-  - extra-d8800ea088.js
+  - extra-0b9b22dd13.js

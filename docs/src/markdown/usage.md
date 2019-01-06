@@ -568,4 +568,4 @@ Some people may desire a stripped down output on occasions that does not include
     "html_simple": false,
 ```
 
---8<-- "refs.md"
+--8<-- "refs.txt"

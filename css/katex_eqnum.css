@@ -1,4 +1,4 @@
-/*https://github.com/Khan/KaTeX/issues/350#issuecomment-160906578*/
+/* https://github.com/Khan/KaTeX/issues/350#issuecomment-160906578 */
 .markdown-body {
     counter-reset: eqnum;
 }

@@ -128,7 +128,7 @@ class Settings(object):
         elif self.file_name is not None and os.path.exists(self.file_name):
             basepath = os.path.dirname(self.file_name)
         else:
-            # Okay, there is no way to tell the orign.
+            # Okay, there is no way to tell the origin.
             # We are probably a stream that has no specified
             # physical location.
             basepath = None

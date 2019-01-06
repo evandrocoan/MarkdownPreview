@@ -107,4 +107,4 @@ If you are using the extension [SuperFences extension][superfences], it has an o
     ]
 ```
 
---8<-- "refs.md"
+--8<-- "refs.txt"

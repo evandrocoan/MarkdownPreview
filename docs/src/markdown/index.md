@@ -38,5 +38,5 @@ https://fontawesome.com/license
 
 The code is available at [GitHub][home] under the [MIT license][license].
 
---8<-- "refs.md"
---8<-- "mathjax.md"
+--8<-- "refs.txt"
+--8<-- "mathjax.txt"

@@ -1,0 +1,147 @@
+matrix:
+- name: mkdocs
+  pipeline:
+  - pyspelling.filters.html:
+      comments: false
+      attributes:
+      - title
+      - alt
+      ignores:
+      - ':matches(code, pre)'
+      - 'a:matches(.magiclink-compare, .magiclink-commit, .magiclink-repository)'
+      - 'span.keys'
+      - ':matches(.MathJax_Preview, .md-nav__link, .md-footer-custom-text, .md-source__repository, .headerlink, .md-icon)'
+  - pyspelling.filters.url:
+  sources:
+  - site/**/*.html
+  aspell:
+    lang: en
+  hunspell:
+    d: en_US
+  dictionary:
+    wordlists:
+    - docs/src/dictionary/en-custom.txt
+    output: build/dictionary/mkdocs.dic
+
+- name: markdown
+  sources:
+  - README.md
+  aspell:
+    lang: en
+  hunspell:
+    d: en_US
+  dictionary:
+    wordlists:
+    - docs/src/dictionary/en-custom.txt
+    output: build/dictionary/mkdocs.dic
+  pipeline:
+  - pyspelling.filters.markdown:
+  - pyspelling.filters.html:
+      comments: false
+      attributes:
+      - title
+      - alt
+      ignores:
+      - ':matches(code, pre)'
+  - pyspelling.filters.url:
+
+- name: javascript
+  pipeline:
+  - pyspelling.filters.javascript:
+      jsdocs: true
+      group_comments: true
+  - pyspelling.filters.context:
+      context_visible_first: true
+      escapes: '\\[\\`]'
+      delimiters:
+      # Ignore multiline content between fences (fences can have 3 or more back ticks)
+      # ```
+      # content
+      # ```
+      - open: '(?s)^(?P<open> *`{3,})$'
+        close: '^(?P=open)$'
+      # Ignore text between inline back ticks
+      - open: '(?P<open>`+)'
+        close: '(?P=open)'
+  - pyspelling.filters.url:
+  default_encoding: utf-8
+  sources:
+  - js/**/*.js
+  aspell:
+    lang: en
+  hunspell:
+    d: en_US
+  dictionary:
+    wordlists:
+    - docs/src/dictionary/en-custom.txt
+    output: build/dictionary/javascript.dic
+
+- name: css
+  default_encoding: utf-8
+  sources:
+  - css/**/*.css
+  aspell:
+    lang: en
+  hunspell:
+    d: en_US
+  dictionary:
+    wordlists:
+    - docs/src/dictionary/en-custom.txt
+    output: build/dictionary/scss.dic
+  pipeline:
+  - pyspelling.filters.stylesheets:
+      stylesheets: css
+  - pyspelling.filters.context:
+      context_visible_first: true
+      escapes: '\\[\\`]'
+      delimiters:
+      # Ignore multiline content between fences (fences can have 3 or more back ticks)
+      # ```
+      # content
+      # ```
+      - open: '(?s)^(?P<open> *`{3,})$'
+        close: '^(?P=open)$'
+      # Ignore text between inline back ticks
+      - open: '(?P<open>`+)'
+        close: '(?P=open)'
+  - pyspelling.filters.url:
+
+- name: python
+  sources:
+  - '**/*.py|!desktop/**/*'
+  aspell:
+    lang: en
+  hunspell:
+    d: en_US
+  dictionary:
+    wordlists:
+    - docs/src/dictionary/en-custom.txt
+    output: build/dictionary/python.dic
+  pipeline:
+  - pyspelling.filters.python:
+  - pyspelling.flow_control.wildcard:
+      allow:
+      - py-comment
+  - pyspelling.filters.context:
+      context_visible_first: true
+      delimiters:
+      # Ignore lint (noqa) and coverage (pragma) as well as shebang (#!)
+      - open: '^(?: *(?:noqa\b|pragma: no cover)|!)'
+        close: '$'
+      # Ignore Python encoding string -*- encoding stuff -*-
+      - open: '^ *-\*-'
+        close: '-\*-$'
+  - pyspelling.filters.context:
+      context_visible_first: true
+      escapes: '\\[\\`]'
+      delimiters:
+      # Ignore multiline content between fences (fences can have 3 or more back ticks)
+      # ```
+      # content
+      # ```
+      - open: '(?s)^(?P<open> *`{3,})$'
+        close: '^(?P=open)$'
+      # Ignore text between inline back ticks
+      - open: '(?P<open>`+)'
+        close: '(?P=open)'
+  - pyspelling.filters.url:

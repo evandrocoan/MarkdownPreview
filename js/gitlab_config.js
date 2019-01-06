@@ -16,7 +16,7 @@ mermaid.initialize({
   mermaid: {
     startOnLoad: false,
   },
-  // mermaidAPI options
+  // mermaid API options
   theme: 'neutral',
 });
 
@@ -46,7 +46,7 @@ function renderMermaid(el) {
 
     svg.classList.add('mermaid');
 
-    // pre > code > svg
+    // `pre > code > svg`
     svg.closest('pre').replaceWith(svg);
 
     // We need to add the original source into the DOM to allow Copy-as-GFM

@@ -9,7 +9,7 @@ class StMarkdown(Markdown):
     """A wrapper around "markdown" lib."""
 
     def __init__(self, *args, **kwargs):
-        """Intialize."""
+        """Initialize."""
         Markdown.__init__(self, *args, **kwargs)
         self.Meta = {}
 
@@ -19,9 +19,9 @@ class StMarkdown(Markdown):
 
         Keyword arguments:
 
-        * extensions: A list of extensions, which can either
+        * `extensions`: A list of extensions, which can either
            be strings or objects.  See the docstring on Markdown.
-        * configs: A dictionary mapping module names to config options.
+        * `configs`: A dictionary mapping module names to config options.
 
         We are overriding this in order to gracefully handle bad extensions
         and to prevent old deprecated style of 'extensions(option=value)'.
